@@ -24,3 +24,6 @@ The goal is to understand system pressure, monitor inflow vs outflow, and predic
 
 ## AI Implementation
 Implemented time-series forecasting using Prophet to predict future system load and support decision-making.
+
+## Live Dashboard
+https://uac-dashboard.streamlit.app

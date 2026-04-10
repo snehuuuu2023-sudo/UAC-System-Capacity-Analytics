@@ -12,8 +12,6 @@ def set_bg(image_file):
 
     st.markdown(f"""
     <style>
-
-    /* REMOVE HEADER + WHITE SPACE */
     header {{visibility: hidden;}}
     footer {{visibility: hidden;}}
 
@@ -23,11 +21,6 @@ def set_bg(image_file):
         padding-right: 2rem;
     }}
 
-    .main {{
-        max-width: 100%;
-    }}
-
-    /* BACKGROUND FIX (NO ZOOM ISSUE) */
     .stApp {{
         background-image: linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.75)),
         url("data:image/jpeg;base64,{encoded}");
@@ -37,13 +30,11 @@ def set_bg(image_file):
         color: white;
     }}
 
-    /* SIDEBAR */
     section[data-testid="stSidebar"] {{
         background: rgba(0,0,0,0.9);
-        color : white;
+        color: white;
     }}
 
-    /* KPI CARDS */
     .card {{
         background: rgba(255,255,255,0.08);
         padding: 20px;
@@ -58,14 +49,11 @@ def set_bg(image_file):
         box-shadow: 0 0 25px cyan;
     }}
 
-    /* TITLE */
     .title {{
         font-size: 50px;
         font-weight: bold;
         text-align: center;
         color: #00FFFF;
-        font-family: 'Poppins', sans-serif;
-        letter-spacing: 1px;
     }}
 
     .subtext {{
@@ -73,7 +61,6 @@ def set_bg(image_file):
         color: #CCCCCC;
         margin-bottom: 20px;
     }}
-
     </style>
     """, unsafe_allow_html=True)
 
@@ -100,34 +87,29 @@ df['Total_Load'] = df['Children in CBP custody'] + df['Children in HHS Care']
 df['Net_Intake'] = df['Children transferred out of CBP custody'] - df['Children discharged from HHS Care']
 df['Backlog'] = df['Net_Intake'].cumsum()
 
+df['Care_Load_Growth'] = df['Total_Load'].pct_change() * 100
+df['Intake_Discharge_Gap'] = df['Net_Intake']
+threshold = df['Total_Load'].mean()
+df['High_Stress'] = df['Total_Load'] > threshold
+
 # ---------------- SIDEBAR ---------------- #
-st.sidebar.title("⚙️ Filters")
-
-start_date = st.sidebar.date_input("Start Date", df['Date'].min())
-end_date = st.sidebar.date_input("End Date", df['Date'].max())
-
-metric = st.sidebar.selectbox("Select Metric", ["Total_Load", "Net_Intake", "Backlog"])
-time_granularity = st.sidebar.selectbox("Time Granularity", ["Daily", "Monthly"])
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("📊 About Project")
+st.sidebar.subheader(" About Project")
 st.sidebar.write("A smart analytics dashboard for tracking UAC system load and capacity. It helps identify trends, monitor performance, and predict system pressure.")
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("📌 Insights")
+st.sidebar.subheader(" Insights")
 st.sidebar.write("• Detect overload periods")
 st.sidebar.write("• Monitor intake vs discharge")
 st.sidebar.write("• Forecast future demand")
 
-# ---------------- FILTER DATA ---------------- #
-df = df[(df['Date'] >= pd.to_datetime(start_date)) & (df['Date'] <= pd.to_datetime(end_date))]
-
 # ---------------- TITLE ---------------- #
-st.markdown('<div class="title">UAC System Capacity & Care Load </div>', unsafe_allow_html=True)
-st.markdown('<div class="subtext">Monitoring system load, intake balance, and capacity stress using analytics & AI</div>', unsafe_allow_html=True)
+st.markdown('<div class="title">UAC System Capacity & Care Load</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtext">Monitoring system load using analytics & AI</div>', unsafe_allow_html=True)
 
 # ---------------- KPI ---------------- #
-st.subheader("📊 KPI Summary")
+st.subheader(" KPI Summary")
 
 col1, col2, col3 = st.columns(3)
 
@@ -136,35 +118,116 @@ col2.markdown(f'<div class="card"><h3>Net Intake</h3><h1 style="color:#FFA500;">
 col3.markdown(f'<div class="card"><h3>Backlog</h3><h1 style="color:#FF4B4B;">{int(df["Backlog"].iloc[-1])}</h1></div>', unsafe_allow_html=True)
 
 # ---------------- GRAPHS ---------------- #
-st.subheader("📈 System Load Overview")
 
-fig1 = px.line(df, x='Date', y='Total_Load', color_discrete_sequence=["#00FFFF"])
+# 1️⃣ Total Load
+st.markdown("###  System Load Overview")
+
+c1, c2 = st.columns(2)
+with c1:
+    load_start = st.date_input("Start Date", df['Date'].min(), key="load_start")
+with c2:
+    load_end = st.date_input("End Date", df['Date'].max(), key="load_end")
+
+df1 = df[(df['Date'] >= pd.to_datetime(load_start)) & (df['Date'] <= pd.to_datetime(load_end))]
+
+fig1 = px.line(df1, x='Date', y='Total_Load', color_discrete_sequence=["#00FFFF"])
 fig1.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='white')
 st.plotly_chart(fig1, use_container_width=True)
 
-# 👉 Toggle Table
 if st.checkbox("Show Data for Total Load"):
-    st.dataframe(df[['Date', 'Total_Load']].head(20), use_container_width=True)
+    st.dataframe(df1[['Date', 'Total_Load']].head(20), use_container_width=True)
 
-st.subheader("📊 Net Intake Trend")
+# 2️⃣ Net Intake
+st.markdown("### Net Intake Trend")
 
-fig2 = px.line(df, x='Date', y='Net_Intake', color_discrete_sequence=["#FFA500"])
+c1, c2 = st.columns(2)
+with c1:
+    ni_start = st.date_input("Start Date", df['Date'].min(), key="ni_start")
+with c2:
+    ni_end = st.date_input("End Date", df['Date'].max(), key="ni_end")
+
+df2 = df[(df['Date'] >= pd.to_datetime(ni_start)) & (df['Date'] <= pd.to_datetime(ni_end))]
+
+fig2 = px.line(df2, x='Date', y='Net_Intake', color_discrete_sequence=["#FFA500"])
 fig2.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='white')
 st.plotly_chart(fig2, use_container_width=True)
 
 if st.checkbox("Show Data for Net Intake"):
-    st.dataframe(df[['Date', 'Net_Intake']].head(20), use_container_width=True)
+    st.dataframe(df2[['Date', 'Net_Intake']].head(20), use_container_width=True)
 
-st.subheader("🚨 Backlog Growth")
+# 3️⃣ Backlog
+st.markdown("### Backlog Growth")
 
-fig3 = px.line(df, x='Date', y='Backlog', color_discrete_sequence=["#FF4B4B"])
+c1, c2 = st.columns(2)
+with c1:
+    b_start = st.date_input("Start Date", df['Date'].min(), key="b_start")
+with c2:
+    b_end = st.date_input("End Date", df['Date'].max(), key="b_end")
+
+df3 = df[(df['Date'] >= pd.to_datetime(b_start)) & (df['Date'] <= pd.to_datetime(b_end))]
+
+fig3 = px.line(df3, x='Date', y='Backlog', color_discrete_sequence=["#FF4B4B"])
 fig3.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='white')
 st.plotly_chart(fig3, use_container_width=True)
 
 if st.checkbox("Show Data for Backlog"):
-    st.dataframe(df[['Date', 'Backlog']].head(20), use_container_width=True)
+    st.dataframe(df3[['Date', 'Backlog']].head(20), use_container_width=True)
+
+# 4️⃣ Growth
+st.markdown("### Care Load Growth Rate (%)")
+
+c1, c2 = st.columns(2)
+with c1:
+    g_start = st.date_input("Start Date", df['Date'].min(), key="g_start")
+with c2:
+    g_end = st.date_input("End Date", df['Date'].max(), key="g_end")
+
+df4 = df[(df['Date'] >= pd.to_datetime(g_start)) & (df['Date'] <= pd.to_datetime(g_end))]
+
+fig4 = px.line(df4, x='Date', y='Care_Load_Growth', color_discrete_sequence=["#00FF7F"])
+fig4.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='white')
+st.plotly_chart(fig4, use_container_width=True)
+
+if st.checkbox("Show Data for Growth"):
+    st.dataframe(df4[['Date', 'Care_Load_Growth']].head(20), use_container_width=True)
+
+# 5️⃣ Gap
+st.markdown("### Intake vs Discharge Gap")
+
+c1, c2 = st.columns(2)
+with c1:
+    gap_start = st.date_input("Start Date", df['Date'].min(), key="gap_start")
+with c2:
+    gap_end = st.date_input("End Date", df['Date'].max(), key="gap_end")
+
+df5 = df[(df['Date'] >= pd.to_datetime(gap_start)) & (df['Date'] <= pd.to_datetime(gap_end))]
+
+fig5 = px.line(df5, x='Date', y='Intake_Discharge_Gap', color_discrete_sequence=["#FFD700"])
+fig5.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='white')
+st.plotly_chart(fig5, use_container_width=True)
+
+if st.checkbox("Show Data for Gap"):
+    st.dataframe(df5[['Date', 'Intake_Discharge_Gap']].head(20), use_container_width=True)
+
+# 6️⃣ Stress
+st.markdown("### High Load Stress Indicator")
+
+c1, c2 = st.columns(2)
+with c1:
+    s_start = st.date_input("Start Date", df['Date'].min(), key="s_start")
+with c2:
+    s_end = st.date_input("End Date", df['Date'].max(), key="s_end")
+
+df6 = df[(df['Date'] >= pd.to_datetime(s_start)) & (df['Date'] <= pd.to_datetime(s_end))]
+
+fig6 = px.scatter(df6, x='Date', y='Total_Load', color='High_Stress',
+                  color_discrete_map={True: 'red', False: 'green'})
+fig6.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='white')
+st.plotly_chart(fig6, use_container_width=True)
+
+if st.checkbox("Show Data for Stress"):
+    st.dataframe(df6[['Date', 'Total_Load', 'High_Stress']].head(20), use_container_width=True)
 
 # ---------------- TABLE ---------------- #
 st.subheader("📋 Data Preview")
-
 st.dataframe(df.head(10))
